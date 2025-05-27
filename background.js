@@ -1,11 +1,5 @@
-// This is the service worker (background.js)
-
-// Import jsQR library - In a real extension, you'd bundle this or ensure it's available.
-// For this example, we'll assume it's globally available or you'd use dynamic import.
-// If jsQR is not bundled, you might need to load it via importScripts() in MV3 for service workers
-// or ensure it's included in your build process.
-// For simplicity, we'll just call its function later.
-// import jsQR from './jsQR.js'; // Example if bundled
+// Import jsQR at the top - this works when not using module type
+importScripts('jsQR.js');
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('QR Code Snip & Scan extension installed/updated.');
@@ -45,7 +39,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ status: "Error: No active tab found" });
       }
     });
-    return true; // Keep message channel open for async response
+    return true;
   } else if (message.action === "captureVisibleTabAndCrop") {
     console.log("Background received 'captureVisibleTabAndCrop' action with rect:", message.rect);
     const { x, y, width, height, devicePixelRatio } = message.rect;
@@ -61,8 +55,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         const image = await createImageBitmapFromDataURL(dataUrl);
         
-        // Create an OffscreenCanvas for the cropped image
-        // Adjust coordinates and dimensions by devicePixelRatio for accurate cropping
         const cropCanvas = new OffscreenCanvas(width * devicePixelRatio, height * devicePixelRatio);
         const cropCtx = cropCanvas.getContext('2d');
 
@@ -70,20 +62,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             throw new Error("Could not get 2D context from OffscreenCanvas for cropping.");
         }
 
-        // Draw the specific portion of the captured image onto the cropCanvas
         cropCtx.drawImage(
           image,
-          x * devicePixelRatio, // sourceX
-          y * devicePixelRatio, // sourceY
-          width * devicePixelRatio,  // sourceWidth
-          height * devicePixelRatio, // sourceHeight
-          0,                    // destX
-          0,                    // destY
-          width * devicePixelRatio,  // destWidth
-          height * devicePixelRatio  // destHeight
+          x * devicePixelRatio,
+          y * devicePixelRatio,
+          width * devicePixelRatio,
+          height * devicePixelRatio,
+          0,
+          0,
+          width * devicePixelRatio,
+          height * devicePixelRatio
         );
 
-        // Get the data URL of the cropped image
         const croppedDataUrl = await cropCanvas.convertToBlob({ type: 'image/png' }).then(blob => {
             return new Promise(resolve => {
                 const reader = new FileReader();
@@ -100,17 +90,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ status: "error", error: `Error cropping image: ${error.message}` });
       }
     });
-    return true; // VERY IMPORTANT: Indicates an asynchronous response.
+    return true;
   } else if (message.action === "captureDone") {
     console.log("Background received captured image dataURI for decoding.");
     decodeQrCodeFromDataUrl(message.dataUrl, sendResponse);
-    return true; // Keep message channel open for async response from QR decoding
+    return true;
   } else {
     console.warn("Received an unknown action in background.js:", message.action);
-    // Optionally send a response for unknown actions if the sender expects one
-    // sendResponse({ status: "Unknown action" }); 
   }
-  // If not returning true for an async sendResponse, the channel might close.
 });
 
 async function decodeQrCodeFromDataUrl(dataUrl, sendResponse) {
@@ -124,46 +111,22 @@ async function decodeQrCodeFromDataUrl(dataUrl, sendResponse) {
     ctx.drawImage(image, 0, 0);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
+    // jsQR should be available since we imported it at the top
     if (typeof jsQR === 'undefined') {
-        console.warn("jsQR library is not loaded! Attempting to load dynamically...");
-        try {
-            importScripts('jsQR.js'); // Assumes jsQR.js is in the root of the extension
-            console.log("jsQR loaded dynamically via importScripts.");
-        } catch (e) {
-            console.error("Failed to load jsQR dynamically:", e);
-            sendResponse({ status: "Error", data: "QR decoding library not available." });
-            return;
-        }
+        console.error("jsQR library is not available!");
+        sendResponse({ status: "Error", data: "QR decoding library not available." });
+        return;
     }
 
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: "dontInvert", // Or "attemptBoth" if needed
+        inversionAttempts: "dontInvert",
     });
 
     if (code && code.data) {
       console.log("QR Code found:", code.data);
-      const notificationMessage = `Decoded Data: ${code.data.substring(0, 100)}${code.data.length > 100 ? '...' : ''}`;
-      chrome.notifications.create({
-        type: 'basic',
-        iconUrl: chrome.runtime.getURL('images/icon48.png'),
-        title: 'QR Code Scanned!',
-        message: notificationMessage
-      }, (notificationId) => {
-        if (chrome.runtime.lastError) {
-            console.error("Notification error:", chrome.runtime.lastError.message);
-        } else {
-            console.log("Notification shown:", notificationId);
-        }
-      });
       sendResponse({ status: "Success", data: code.data });
     } else {
       console.log("No QR Code found or could not decode.");
-      chrome.notifications.create({
-        type: 'basic',
-        iconUrl: chrome.runtime.getURL('images/icon48.png'),
-        title: 'QR Scan Failed',
-        message: 'No QR code found in the selected area.'
-      });
       sendResponse({ status: "Error", data: "No QR code found." });
     }
   } catch (error) {
