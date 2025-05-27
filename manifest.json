@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "QR Code Snip & Scan",
+  "version": "0.1.0",
+  "description": "Select a QR code on your screen to scan it.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "notifications"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

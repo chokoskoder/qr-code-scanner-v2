@@ -1,0 +1,37 @@
+
+/* content/snipper.css */
+
+/* The main overlay that covers the screen */
+#qrSnipOverlay {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw; /* Full viewport width */
+    height: 100vh; /* Full viewport height */
+    background-color: rgba(0, 0, 0, 0.3); /* Semi-transparent black */
+    z-index: 2147483640; /* Very high z-index to be on top of most elements */
+    cursor: crosshair; /* Indicate snipping action */
+    display: flex; /* Not strictly necessary for current setup but can be useful */
+    justify-content: center; /* Not strictly necessary */
+    align-items: center; /* Not strictly necessary */
+    box-sizing: border-box;
+}
+
+/* The box that shows the user's current selection area */
+#qrSnipSelectionBox {
+    position: absolute; /* Positioned relative to the overlayDiv during mouse events */
+    border: 2px dashed #007bff; /* A clear dashed blue border */
+    background-color: rgba(0, 123, 255, 0.1); /* Slightly tinted background for the selection */
+    box-sizing: border-box; /* Border and padding included in width/height */
+    display: none; /* Initially hidden, shown on mousedown */
+}
+
+/* Optional: Style for a message if needed within the overlay */
+#qrSnipOverlay .qrSnipMessage {
+    color: white;
+    background-color: rgba(0,0,0,0.7);
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+}
